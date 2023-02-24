@@ -1,16 +1,29 @@
-import {callbackify} from 'node:util';
-import {createClient} from 'redis';
+import {promisify} from 'node:util';
+import {createClient} from 'redis-mock';
 
 export async function redisStore(config) {
   const redisCache = createClient(config);
-  await redisCache.connect();
 
   return buildRedisStoreWithConfig(redisCache, config);
 }
 
 const buildRedisStoreWithConfig = (redisCache, config) => {
+
+  const multi = redisCache.multi();
+  const getAsync = promisify(redisCache.get).bind(redisCache);
+  const ttlAsync = promisify(redisCache.ttl).bind(redisCache);
+  const setAsync = promisify(redisCache.set).bind(redisCache);
+  const delAsync = promisify(redisCache.del).bind(redisCache);
+  const setExAsync = promisify(redisCache.setex).bind(redisCache);
+  const msetAsync = promisify(redisCache.mset).bind(redisCache);
+  const mgetAsync = promisify(redisCache.mget).bind(redisCache);
+  const flushdbAsync = promisify(redisCache.flushdb).bind(redisCache);
+  const keysAsync = promisify(redisCache.keys).bind(redisCache);
+  const multiExecAsync = promisify(multi.exec).bind(multi);
+
   const isCacheableValue =
     config.isCacheableValue || (value => value !== undefined && value !== null);
+
   const set = async (key, value, options) => {
     if (!isCacheableValue(value)) {
       throw new Error(`"${value}" is not a cacheable value`);
@@ -19,13 +32,13 @@ const buildRedisStoreWithConfig = (redisCache, config) => {
     const ttl = (options?.ttl || options?.ttl === 0) ? options.ttl : config.ttl;
 
     if (ttl) {
-      return redisCache.setEx(key, ttl, encodeValue(value));
+      return setExAsync(key, ttl, encodeValue(value));
     } else {
-      return redisCache.set(key, encodeValue(value));
+      return setAsync(key, encodeValue(value));
     }
   };
   const get = async (key, options) => {
-    const val = await redisCache.get(key);
+    const val = await getAsync(key);
 
     if (val === null) {
       return null;
@@ -37,7 +50,7 @@ const buildRedisStoreWithConfig = (redisCache, config) => {
     if (isObject(args.at(-1))) {
       options = args.pop();
     }
-    return redisCache.del(args);
+    return delAsync(args);
   };
   const mset = async (args) => {
     let options = {};
@@ -59,14 +72,13 @@ const buildRedisStoreWithConfig = (redisCache, config) => {
       .filter((key) => key !== null);
 
     if (ttl) {
-      const multi = redisCache.multi();
       for (const kv of items) {
         const [key, value] = kv;
-        multi.setEx(key, ttl, value);
+        multi.setex(key, ttl, value);
       }
-      return multi.exec();
+      return multiExecAsync();
     } else {
-      return redisCache.mSet(items);
+      return msetAsync(items);
     }
   };
   const mget = async (...args) => {
@@ -74,17 +86,15 @@ const buildRedisStoreWithConfig = (redisCache, config) => {
     if (isObject(args.at(-1))) {
       options = args.pop();
     }
-    return redisCache
-      .mGet(args)
-      .then((res) =>
-        res.map((val) => {
-          if (val === null) {
-            return null;
-          }
 
-          return options.parse !== false ? decodeValue(val) : val;
-        }),
-      );
+    const res = await mgetAsync(args)
+    return res.map((val) => {
+      if (val === null) {
+        return null;
+      }
+
+      return options.parse !== false ? decodeValue(val) : val;
+    })
   };
   const mdel = async (...args) => {
     let options = {};
@@ -94,23 +104,23 @@ const buildRedisStoreWithConfig = (redisCache, config) => {
     if (Array.isArray(args)) {
       args = args.flat();
     }
-    return redisCache.del(args);
+    return delAsync(args);
   };
   const reset = async () => {
-    return redisCache.flushDb();
+    return flushdbAsync();
   };
   const keys = async (pattern) => {
-    return redisCache.keys(pattern);
+    return keysAsync(pattern);
   };
   const ttl = async (key) => {
-    return redisCache.ttl(key);
+    return ttlAsync(key);
   };
 
   return {
     name: 'redis',
     getClient: () => redisCache,
     isCacheableValue,
-    set: (key, value, options, cb) => {
+    set: async(key, value, options, cb) => {
       if (typeof options === 'function') {
         cb = options;
         options = {};
@@ -118,12 +128,17 @@ const buildRedisStoreWithConfig = (redisCache, config) => {
       options = options || {};
 
       if (typeof cb === 'function') {
-        callbackify(set)(key, value, options, cb);
+        try {
+          const res = await set(key, value, options)
+          cb(null, res)
+        } catch (error) {
+          cb(error, null)
+        }
       } else {
         return set(key, value, options);
       }
     },
-    get: (key, options, cb) => {
+    get: async(key, options, cb) => {
       if (typeof options === 'function') {
         cb = options;
         options = {};
@@ -131,60 +146,99 @@ const buildRedisStoreWithConfig = (redisCache, config) => {
       options = options || {};
 
       if (typeof cb === 'function') {
-        callbackify(get)(key, options, cb);
+        try {
+          const res = await get(key, options)
+          cb(null, res)
+        } catch (error) {
+          cb(error, null)
+        }
       } else {
         return get(key, options);
       }
     },
-    del: (...args) => {
+    del: async(...args) => {
       if (typeof args.at(-1) === 'function') {
         const cb = args.pop();
-        callbackify(del)(args, cb);
-      } else {
-        return del(args);
+        try {
+          const res = await del(args)
+          cb(null, res)
+        } catch (error) {
+          cb(error, null)
+        }
       }
+      return del(args);
     },
-    mset: (...args) => {
+    mset: async(...args) => {
       if (typeof args.at(-1) === 'function') {
         const cb = args.pop();
-        callbackify(mset)(args, cb);
+        try {
+          const res = await mset(args)
+          cb(null, res)
+        } catch (error) {
+          cb(error, null)
+        }
       } else {
         return mset(args);
       }
     },
-    mget: (...args) => {
+    mget: async(...args) => {
       if (typeof args.at(-1) === 'function') {
         const cb = args.pop();
-        callbackify(() => mget(...args))(cb);
+        try {
+          const res = await mget(...args)
+          cb(null, res)
+        } catch (error) {
+          cb(error, null)
+        }
       } else {
         return mget(...args);
       }
     },
-    mdel: (...args) => {
+    mdel: async(...args) => {
       if (typeof args.at(-1) === 'function') {
         const cb = args.pop();
-        callbackify(() => mdel(...args))(cb);
+        try {
+          const res = await mdel(...args)
+          cb(null, res)
+        } catch (error) {
+          cb(error, null)
+        }
       } else {
         return mdel(...args);
       }
     },
-    reset: (cb) => {
+    reset: async(cb) => {
       if (typeof cb === 'function') {
-        callbackify(reset)(cb);
+        try {
+          const res = await reset()
+          cb(null, res)
+        } catch (error) {
+          cb(error, null)
+        }
       } else {
         return reset();
       }
     },
-    keys: (pattern = '*', cb) => {
+    keys: async(pattern = '*', cb) => {
       if (typeof cb === 'function') {
-        callbackify(() => keys(pattern))(cb);
+        try {
+          const res = await keys(pattern)
+          cb(null, res)
+        } catch (error) {
+          cb(error, null)
+        }
       } else {
         return keys(pattern);
       }
     },
-    ttl: (key, cb) => {
+    ttl: async(key, cb) => {
       if (typeof cb === 'function') {
-        callbackify(() => ttl(key))(cb);
+        try {
+          const res = await ttl(key)
+          cb(null, res)
+        } catch (error) {
+          cb(error, null)
+        }
       } else {
         return ttl(key);
       }

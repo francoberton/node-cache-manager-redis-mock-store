@@ -3,7 +3,7 @@
 Object.defineProperty(exports, '__esModule', { value: true });
 
 var node_util = require('node:util');
-var redis = require('redis');
+var redisMock = require('redis-mock');
 
 function _regeneratorRuntime() {
   _regeneratorRuntime = function () {
@@ -437,27 +437,35 @@ function redisStore(_x) {
   return _redisStore.apply(this, arguments);
 }
 function _redisStore() {
-  _redisStore = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee10(config) {
+  _redisStore = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee19(config) {
     var redisCache;
-    return _regeneratorRuntime().wrap(function _callee10$(_context10) {
+    return _regeneratorRuntime().wrap(function _callee19$(_context19) {
       while (1) {
-        switch (_context10.prev = _context10.next) {
+        switch (_context19.prev = _context19.next) {
           case 0:
-            redisCache = redis.createClient(config);
-            _context10.next = 3;
-            return redisCache.connect();
-          case 3:
-            return _context10.abrupt("return", buildRedisStoreWithConfig(redisCache, config));
-          case 4:
+            redisCache = redisMock.createClient(config);
+            return _context19.abrupt("return", buildRedisStoreWithConfig(redisCache, config));
+          case 2:
           case "end":
-            return _context10.stop();
+            return _context19.stop();
         }
       }
-    }, _callee10);
+    }, _callee19);
   }));
   return _redisStore.apply(this, arguments);
 }
 var buildRedisStoreWithConfig = function buildRedisStoreWithConfig(redisCache, config) {
+  var multi = redisCache.multi();
+  var getAsync = node_util.promisify(redisCache.get).bind(redisCache);
+  var ttlAsync = node_util.promisify(redisCache.ttl).bind(redisCache);
+  var setAsync = node_util.promisify(redisCache.set).bind(redisCache);
+  var delAsync = node_util.promisify(redisCache.del).bind(redisCache);
+  var setExAsync = node_util.promisify(redisCache.setex).bind(redisCache);
+  var msetAsync = node_util.promisify(redisCache.mset).bind(redisCache);
+  var mgetAsync = node_util.promisify(redisCache.mget).bind(redisCache);
+  var flushdbAsync = node_util.promisify(redisCache.flushdb).bind(redisCache);
+  var keysAsync = node_util.promisify(redisCache.keys).bind(redisCache);
+  var multiExecAsync = node_util.promisify(multi.exec).bind(multi);
   var isCacheableValue = config.isCacheableValue || function (value) {
     return value !== undefined && value !== null;
   };
@@ -479,9 +487,9 @@ var buildRedisStoreWithConfig = function buildRedisStoreWithConfig(redisCache, c
                 _context.next = 7;
                 break;
               }
-              return _context.abrupt("return", redisCache.setEx(key, ttl, encodeValue(value)));
+              return _context.abrupt("return", setExAsync(key, ttl, encodeValue(value)));
             case 7:
-              return _context.abrupt("return", redisCache.set(key, encodeValue(value)));
+              return _context.abrupt("return", setAsync(key, encodeValue(value)));
             case 8:
             case "end":
               return _context.stop();
@@ -501,7 +509,7 @@ var buildRedisStoreWithConfig = function buildRedisStoreWithConfig(redisCache, c
           switch (_context2.prev = _context2.next) {
             case 0:
               _context2.next = 2;
-              return redisCache.get(key);
+              return getAsync(key);
             case 2:
               val = _context2.sent;
               if (!(val === null)) {
@@ -531,7 +539,7 @@ var buildRedisStoreWithConfig = function buildRedisStoreWithConfig(redisCache, c
               if (isObject(args.at(-1))) {
                 args.pop();
               }
-              return _context3.abrupt("return", redisCache.del(args));
+              return _context3.abrupt("return", delAsync(args));
             case 3:
             case "end":
               return _context3.stop();
@@ -545,7 +553,7 @@ var buildRedisStoreWithConfig = function buildRedisStoreWithConfig(redisCache, c
   }();
   var _mset = /*#__PURE__*/function () {
     var _ref4 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee4(args) {
-      var options, ttl, items, multi, _iterator, _step, kv, _kv, key, value;
+      var options, ttl, items, _iterator, _step, kv, _kv, key, value;
       return _regeneratorRuntime().wrap(function _callee4$(_context4) {
         while (1) {
           switch (_context4.prev = _context4.next) {
@@ -566,26 +574,25 @@ var buildRedisStoreWithConfig = function buildRedisStoreWithConfig(redisCache, c
                 return key !== null;
               });
               if (!ttl) {
-                _context4.next = 11;
+                _context4.next = 10;
                 break;
               }
-              multi = redisCache.multi();
               _iterator = _createForOfIteratorHelper(items);
               try {
                 for (_iterator.s(); !(_step = _iterator.n()).done;) {
                   kv = _step.value;
                   _kv = _slicedToArray(kv, 2), key = _kv[0], value = _kv[1];
-                  multi.setEx(key, ttl, value);
+                  multi.setex(key, ttl, value);
                 }
               } catch (err) {
                 _iterator.e(err);
               } finally {
                 _iterator.f();
               }
-              return _context4.abrupt("return", multi.exec());
+              return _context4.abrupt("return", multiExecAsync());
+            case 10:
+              return _context4.abrupt("return", msetAsync(items));
             case 11:
-              return _context4.abrupt("return", redisCache.mSet(items));
-            case 12:
             case "end":
               return _context4.stop();
           }
@@ -602,6 +609,7 @@ var buildRedisStoreWithConfig = function buildRedisStoreWithConfig(redisCache, c
         _len,
         args,
         _key,
+        res,
         _args5 = arguments;
       return _regeneratorRuntime().wrap(function _callee5$(_context5) {
         while (1) {
@@ -614,15 +622,17 @@ var buildRedisStoreWithConfig = function buildRedisStoreWithConfig(redisCache, c
               if (isObject(args.at(-1))) {
                 options = args.pop();
               }
-              return _context5.abrupt("return", redisCache.mGet(args).then(function (res) {
-                return res.map(function (val) {
-                  if (val === null) {
-                    return null;
-                  }
-                  return options.parse !== false ? decodeValue(val) : val;
-                });
+              _context5.next = 5;
+              return mgetAsync(args);
+            case 5:
+              res = _context5.sent;
+              return _context5.abrupt("return", res.map(function (val) {
+                if (val === null) {
+                  return null;
+                }
+                return options.parse !== false ? decodeValue(val) : val;
               }));
-            case 4:
+            case 7:
             case "end":
               return _context5.stop();
           }
@@ -652,7 +662,7 @@ var buildRedisStoreWithConfig = function buildRedisStoreWithConfig(redisCache, c
               if (Array.isArray(args)) {
                 args = args.flat();
               }
-              return _context6.abrupt("return", redisCache.del(args));
+              return _context6.abrupt("return", delAsync(args));
             case 5:
             case "end":
               return _context6.stop();
@@ -670,7 +680,7 @@ var buildRedisStoreWithConfig = function buildRedisStoreWithConfig(redisCache, c
         while (1) {
           switch (_context7.prev = _context7.next) {
             case 0:
-              return _context7.abrupt("return", redisCache.flushDb());
+              return _context7.abrupt("return", flushdbAsync());
             case 1:
             case "end":
               return _context7.stop();
@@ -688,7 +698,7 @@ var buildRedisStoreWithConfig = function buildRedisStoreWithConfig(redisCache, c
         while (1) {
           switch (_context8.prev = _context8.next) {
             case 0:
-              return _context8.abrupt("return", redisCache.keys(pattern));
+              return _context8.abrupt("return", keysAsync(pattern));
             case 1:
             case "end":
               return _context8.stop();
@@ -706,7 +716,7 @@ var buildRedisStoreWithConfig = function buildRedisStoreWithConfig(redisCache, c
         while (1) {
           switch (_context9.prev = _context9.next) {
             case 0:
-              return _context9.abrupt("return", redisCache.ttl(key));
+              return _context9.abrupt("return", ttlAsync(key));
             case 1:
             case "end":
               return _context9.stop();
@@ -724,105 +734,414 @@ var buildRedisStoreWithConfig = function buildRedisStoreWithConfig(redisCache, c
       return redisCache;
     },
     isCacheableValue: isCacheableValue,
-    set: function set(key, value, options, cb) {
-      if (typeof options === 'function') {
-        cb = options;
-        options = {};
+    set: function () {
+      var _set2 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee10(key, value, options, cb) {
+        var res;
+        return _regeneratorRuntime().wrap(function _callee10$(_context10) {
+          while (1) {
+            switch (_context10.prev = _context10.next) {
+              case 0:
+                if (typeof options === 'function') {
+                  cb = options;
+                  options = {};
+                }
+                options = options || {};
+                if (!(typeof cb === 'function')) {
+                  _context10.next = 15;
+                  break;
+                }
+                _context10.prev = 3;
+                _context10.next = 6;
+                return _set(key, value, options);
+              case 6:
+                res = _context10.sent;
+                cb(null, res);
+                _context10.next = 13;
+                break;
+              case 10:
+                _context10.prev = 10;
+                _context10.t0 = _context10["catch"](3);
+                cb(_context10.t0, null);
+              case 13:
+                _context10.next = 16;
+                break;
+              case 15:
+                return _context10.abrupt("return", _set(key, value, options));
+              case 16:
+              case "end":
+                return _context10.stop();
+            }
+          }
+        }, _callee10, null, [[3, 10]]);
+      }));
+      function set(_x11, _x12, _x13, _x14) {
+        return _set2.apply(this, arguments);
       }
-      options = options || {};
-      if (typeof cb === 'function') {
-        node_util.callbackify(_set)(key, value, options, cb);
-      } else {
-        return _set(key, value, options);
+      return set;
+    }(),
+    get: function () {
+      var _get2 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee11(key, options, cb) {
+        var res;
+        return _regeneratorRuntime().wrap(function _callee11$(_context11) {
+          while (1) {
+            switch (_context11.prev = _context11.next) {
+              case 0:
+                if (typeof options === 'function') {
+                  cb = options;
+                  options = {};
+                }
+                options = options || {};
+                if (!(typeof cb === 'function')) {
+                  _context11.next = 15;
+                  break;
+                }
+                _context11.prev = 3;
+                _context11.next = 6;
+                return _get(key, options);
+              case 6:
+                res = _context11.sent;
+                cb(null, res);
+                _context11.next = 13;
+                break;
+              case 10:
+                _context11.prev = 10;
+                _context11.t0 = _context11["catch"](3);
+                cb(_context11.t0, null);
+              case 13:
+                _context11.next = 16;
+                break;
+              case 15:
+                return _context11.abrupt("return", _get(key, options));
+              case 16:
+              case "end":
+                return _context11.stop();
+            }
+          }
+        }, _callee11, null, [[3, 10]]);
+      }));
+      function get(_x15, _x16, _x17) {
+        return _get2.apply(this, arguments);
       }
-    },
-    get: function get(key, options, cb) {
-      if (typeof options === 'function') {
-        cb = options;
-        options = {};
+      return get;
+    }(),
+    del: function () {
+      var _del2 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee12() {
+        var _len3,
+          args,
+          _key3,
+          cb,
+          res,
+          _args12 = arguments;
+        return _regeneratorRuntime().wrap(function _callee12$(_context12) {
+          while (1) {
+            switch (_context12.prev = _context12.next) {
+              case 0:
+                for (_len3 = _args12.length, args = new Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
+                  args[_key3] = _args12[_key3];
+                }
+                if (!(typeof args.at(-1) === 'function')) {
+                  _context12.next = 13;
+                  break;
+                }
+                cb = args.pop();
+                _context12.prev = 3;
+                _context12.next = 6;
+                return _del(args);
+              case 6:
+                res = _context12.sent;
+                cb(null, res);
+                _context12.next = 13;
+                break;
+              case 10:
+                _context12.prev = 10;
+                _context12.t0 = _context12["catch"](3);
+                cb(_context12.t0, null);
+              case 13:
+                return _context12.abrupt("return", _del(args));
+              case 14:
+              case "end":
+                return _context12.stop();
+            }
+          }
+        }, _callee12, null, [[3, 10]]);
+      }));
+      function del() {
+        return _del2.apply(this, arguments);
       }
-      options = options || {};
-      if (typeof cb === 'function') {
-        node_util.callbackify(_get)(key, options, cb);
-      } else {
-        return _get(key, options);
+      return del;
+    }(),
+    mset: function () {
+      var _mset2 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee13() {
+        var _len4,
+          args,
+          _key4,
+          cb,
+          res,
+          _args13 = arguments;
+        return _regeneratorRuntime().wrap(function _callee13$(_context13) {
+          while (1) {
+            switch (_context13.prev = _context13.next) {
+              case 0:
+                for (_len4 = _args13.length, args = new Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
+                  args[_key4] = _args13[_key4];
+                }
+                if (!(typeof args.at(-1) === 'function')) {
+                  _context13.next = 15;
+                  break;
+                }
+                cb = args.pop();
+                _context13.prev = 3;
+                _context13.next = 6;
+                return _mset(args);
+              case 6:
+                res = _context13.sent;
+                cb(null, res);
+                _context13.next = 13;
+                break;
+              case 10:
+                _context13.prev = 10;
+                _context13.t0 = _context13["catch"](3);
+                cb(_context13.t0, null);
+              case 13:
+                _context13.next = 16;
+                break;
+              case 15:
+                return _context13.abrupt("return", _mset(args));
+              case 16:
+              case "end":
+                return _context13.stop();
+            }
+          }
+        }, _callee13, null, [[3, 10]]);
+      }));
+      function mset() {
+        return _mset2.apply(this, arguments);
       }
-    },
-    del: function del() {
-      for (var _len3 = arguments.length, args = new Array(_len3), _key3 = 0; _key3 < _len3; _key3++) {
-        args[_key3] = arguments[_key3];
+      return mset;
+    }(),
+    mget: function () {
+      var _mget2 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee14() {
+        var _len5,
+          args,
+          _key5,
+          cb,
+          res,
+          _args14 = arguments;
+        return _regeneratorRuntime().wrap(function _callee14$(_context14) {
+          while (1) {
+            switch (_context14.prev = _context14.next) {
+              case 0:
+                for (_len5 = _args14.length, args = new Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
+                  args[_key5] = _args14[_key5];
+                }
+                if (!(typeof args.at(-1) === 'function')) {
+                  _context14.next = 15;
+                  break;
+                }
+                cb = args.pop();
+                _context14.prev = 3;
+                _context14.next = 6;
+                return _mget.apply(void 0, args);
+              case 6:
+                res = _context14.sent;
+                cb(null, res);
+                _context14.next = 13;
+                break;
+              case 10:
+                _context14.prev = 10;
+                _context14.t0 = _context14["catch"](3);
+                cb(_context14.t0, null);
+              case 13:
+                _context14.next = 16;
+                break;
+              case 15:
+                return _context14.abrupt("return", _mget.apply(void 0, args));
+              case 16:
+              case "end":
+                return _context14.stop();
+            }
+          }
+        }, _callee14, null, [[3, 10]]);
+      }));
+      function mget() {
+        return _mget2.apply(this, arguments);
       }
-      if (typeof args.at(-1) === 'function') {
-        var cb = args.pop();
-        node_util.callbackify(_del)(args, cb);
-      } else {
-        return _del(args);
+      return mget;
+    }(),
+    mdel: function () {
+      var _mdel2 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee15() {
+        var _len6,
+          args,
+          _key6,
+          cb,
+          res,
+          _args15 = arguments;
+        return _regeneratorRuntime().wrap(function _callee15$(_context15) {
+          while (1) {
+            switch (_context15.prev = _context15.next) {
+              case 0:
+                for (_len6 = _args15.length, args = new Array(_len6), _key6 = 0; _key6 < _len6; _key6++) {
+                  args[_key6] = _args15[_key6];
+                }
+                if (!(typeof args.at(-1) === 'function')) {
+                  _context15.next = 15;
+                  break;
+                }
+                cb = args.pop();
+                _context15.prev = 3;
+                _context15.next = 6;
+                return _mdel.apply(void 0, args);
+              case 6:
+                res = _context15.sent;
+                cb(null, res);
+                _context15.next = 13;
+                break;
+              case 10:
+                _context15.prev = 10;
+                _context15.t0 = _context15["catch"](3);
+                cb(_context15.t0, null);
+              case 13:
+                _context15.next = 16;
+                break;
+              case 15:
+                return _context15.abrupt("return", _mdel.apply(void 0, args));
+              case 16:
+              case "end":
+                return _context15.stop();
+            }
+          }
+        }, _callee15, null, [[3, 10]]);
+      }));
+      function mdel() {
+        return _mdel2.apply(this, arguments);
       }
-    },
-    mset: function mset() {
-      for (var _len4 = arguments.length, args = new Array(_len4), _key4 = 0; _key4 < _len4; _key4++) {
-        args[_key4] = arguments[_key4];
+      return mdel;
+    }(),
+    reset: function () {
+      var _reset2 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee16(cb) {
+        var res;
+        return _regeneratorRuntime().wrap(function _callee16$(_context16) {
+          while (1) {
+            switch (_context16.prev = _context16.next) {
+              case 0:
+                if (!(typeof cb === 'function')) {
+                  _context16.next = 13;
+                  break;
+                }
+                _context16.prev = 1;
+                _context16.next = 4;
+                return _reset();
+              case 4:
+                res = _context16.sent;
+                cb(null, res);
+                _context16.next = 11;
+                break;
+              case 8:
+                _context16.prev = 8;
+                _context16.t0 = _context16["catch"](1);
+                cb(_context16.t0, null);
+              case 11:
+                _context16.next = 14;
+                break;
+              case 13:
+                return _context16.abrupt("return", _reset());
+              case 14:
+              case "end":
+                return _context16.stop();
+            }
+          }
+        }, _callee16, null, [[1, 8]]);
+      }));
+      function reset(_x18) {
+        return _reset2.apply(this, arguments);
       }
-      if (typeof args.at(-1) === 'function') {
-        var cb = args.pop();
-        node_util.callbackify(_mset)(args, cb);
-      } else {
-        return _mset(args);
+      return reset;
+    }(),
+    keys: function () {
+      var _keys2 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee17() {
+        var pattern,
+          cb,
+          res,
+          _args17 = arguments;
+        return _regeneratorRuntime().wrap(function _callee17$(_context17) {
+          while (1) {
+            switch (_context17.prev = _context17.next) {
+              case 0:
+                pattern = _args17.length > 0 && _args17[0] !== undefined ? _args17[0] : '*';
+                cb = _args17.length > 1 ? _args17[1] : undefined;
+                if (!(typeof cb === 'function')) {
+                  _context17.next = 15;
+                  break;
+                }
+                _context17.prev = 3;
+                _context17.next = 6;
+                return _keys(pattern);
+              case 6:
+                res = _context17.sent;
+                cb(null, res);
+                _context17.next = 13;
+                break;
+              case 10:
+                _context17.prev = 10;
+                _context17.t0 = _context17["catch"](3);
+                cb(_context17.t0, null);
+              case 13:
+                _context17.next = 16;
+                break;
+              case 15:
+                return _context17.abrupt("return", _keys(pattern));
+              case 16:
+              case "end":
+                return _context17.stop();
+            }
+          }
+        }, _callee17, null, [[3, 10]]);
+      }));
+      function keys() {
+        return _keys2.apply(this, arguments);
       }
-    },
-    mget: function mget() {
-      for (var _len5 = arguments.length, args = new Array(_len5), _key5 = 0; _key5 < _len5; _key5++) {
-        args[_key5] = arguments[_key5];
+      return keys;
+    }(),
+    ttl: function () {
+      var _ttl2 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee18(key, cb) {
+        var res;
+        return _regeneratorRuntime().wrap(function _callee18$(_context18) {
+          while (1) {
+            switch (_context18.prev = _context18.next) {
+              case 0:
+                if (!(typeof cb === 'function')) {
+                  _context18.next = 13;
+                  break;
+                }
+                _context18.prev = 1;
+                _context18.next = 4;
+                return _ttl(key);
+              case 4:
+                res = _context18.sent;
+                cb(null, res);
+                _context18.next = 11;
+                break;
+              case 8:
+                _context18.prev = 8;
+                _context18.t0 = _context18["catch"](1);
+                cb(_context18.t0, null);
+              case 11:
+                _context18.next = 14;
+                break;
+              case 13:
+                return _context18.abrupt("return", _ttl(key));
+              case 14:
+              case "end":
+                return _context18.stop();
+            }
+          }
+        }, _callee18, null, [[1, 8]]);
+      }));
+      function ttl(_x19, _x20) {
+        return _ttl2.apply(this, arguments);
       }
-      if (typeof args.at(-1) === 'function') {
-        var cb = args.pop();
-        node_util.callbackify(function () {
-          return _mget.apply(void 0, args);
-        })(cb);
-      } else {
-        return _mget.apply(void 0, args);
-      }
-    },
-    mdel: function mdel() {
-      for (var _len6 = arguments.length, args = new Array(_len6), _key6 = 0; _key6 < _len6; _key6++) {
-        args[_key6] = arguments[_key6];
-      }
-      if (typeof args.at(-1) === 'function') {
-        var cb = args.pop();
-        node_util.callbackify(function () {
-          return _mdel.apply(void 0, args);
-        })(cb);
-      } else {
-        return _mdel.apply(void 0, args);
-      }
-    },
-    reset: function reset(cb) {
-      if (typeof cb === 'function') {
-        node_util.callbackify(_reset)(cb);
-      } else {
-        return _reset();
-      }
-    },
-    keys: function keys() {
-      var pattern = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '*';
-      var cb = arguments.length > 1 ? arguments[1] : undefined;
-      if (typeof cb === 'function') {
-        node_util.callbackify(function () {
-          return _keys(pattern);
-        })(cb);
-      } else {
-        return _keys(pattern);
-      }
-    },
-    ttl: function ttl(key, cb) {
-      if (typeof cb === 'function') {
-        node_util.callbackify(function () {
-          return _ttl(key);
-        })(cb);
-      } else {
-        return _ttl(key);
-      }
-    }
+      return ttl;
+    }()
   };
 };
 function encodeValue(value) {

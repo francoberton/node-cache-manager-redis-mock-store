@@ -2,10 +2,10 @@
 [![GitHub issues](https://img.shields.io/github/issues/dabroek/node-cache-manager-redis-store.svg)](https://github.com/dabroek/node-cache-manager-redis-store/issues)
 [![codecov](https://codecov.io/github/dabroek/node-cache-manager-redis-store/branch/master/graph/badge.svg?token=QmCNGyCLlD)](https://codecov.io/github/dabroek/node-cache-manager-redis-store)
 
-Redis store for node cache manager
+Redis mock store for node cache manager
 ==================================
 
-Redis cache store for [node-cache-manager](https://github.com/BryanDonovan/node-cache-manager).
+Redis mock cache store for [node-cache-manager](https://github.com/BryanDonovan/node-cache-manager).
 
 How is this package different from `node-cache-manager-redis`?
 ----------------------------------------------------------------------------------
@@ -17,30 +17,27 @@ Installation
 ------------
 
 ```sh
-npm install cache-manager-redis-store --save
+npm install cache-manager-redis-mock-store --save-dev
 ```
 or
 ```sh
-yarn add cache-manager-redis-store
+yarn add cache-manager-redis-mock-store --save-dev
 ```
 
 Usage Examples
 --------------
 
-See examples below on how to implement the Redis cache store.
+See examples below on how to implement the Redis mock cache store.
 
 ### Single store
 
 ```js
 var cacheManager = require('cache-manager');
-var redisStore = require('cache-manager-redis-store').redisStore;
+var redisStore = require('cache-manager-redis-mock-store').redisStore;
 
 var config = {
-  socket: {
-    host: 'localhost', // default value
-    port: 6379, // default value
-  },
-  password: 'XXXXX',
+  host: 'localhost', // default value
+  port: 6379, // default value
   db: 0,
   ttl: 600
 };
@@ -51,11 +48,6 @@ var redisCache = cacheManager.caching({
 
 // listen for redis connection error event
 var redisClient = redisCache.store.getClient();
-
-redisClient.on('error', (error) => {
-  // handle error here
-  console.log(error);
-});
 
 var ttl = 5;
 
@@ -107,7 +99,7 @@ redisCache.wrap(key, (cb) => {
 
 ```js
 var cacheManager = require('cache-manager');
-var redisStore = require('cache-manager-redis-store').redisStore;
+var redisStore = require('cache-manager-redis-mock-store').redisStore;
 
 var redisCache = cacheManager.caching({ store: await redisStore({ ...config, db: 0, ttl: 600 }) });
 var memoryCache = cacheManager.caching({ store: 'memory', max: 100, ttl: 60 });
@@ -147,10 +139,10 @@ multiCache.wrap(key2, (cb) => {
 Contribution
 ------------
 
-Want to help improve this package? We take [pull requests](https://github.com/dabroek/node-cache-manager-redis-store/pulls).
+Want to help improve this package? We take [pull requests](https://github.com/francoberton/node-cache-manager-redis-mock-store/pulls).
 
 
 License
 -------
 
-The `node-cache-manager-redis-store` is licensed under the MIT license.
+The `node-cache-manager-redis-mock-store` is licensed under the MIT license.
