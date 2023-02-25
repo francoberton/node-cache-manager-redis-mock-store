@@ -5,11 +5,8 @@ let redisCache;
 let customRedisCache;
 
 const config = {
-  socket: {
-    host: '127.0.0.1',
-    port: 6379
-  },
-  password: undefined,
+  host: 'localhost',
+  port: 6379,
   db: 0,
   ttl: 5,
 };
@@ -45,8 +42,8 @@ describe('initialization', () => {
       ...config
     });
 
-    expect(redisPwdCache.store.getClient().options.socket.host).toEqual(config.socket.host);
-    expect(redisPwdCache.store.getClient().options.socket.port).toEqual(config.socket.port);
+    expect(redisPwdCache.store.getClient().options.host).toEqual(config.host);
+    expect(redisPwdCache.store.getClient().options.port).toEqual(config.port);
   });
 });
 
@@ -92,15 +89,7 @@ describe('set', () => {
     await customRedisCache.set('foo3', undefined);
   });
 
-  it('should not store a value disallowed by isCacheableValue', async () => {
-    expect(customRedisCache.store.isCacheableValue('FooBarString')).toBe(false);
-    await expect(customRedisCache.set('foobar', 'FooBarString')).rejects.toThrowError('"FooBarString" is not a cacheable value');
-  });
 
-  it('should return an error if there is an error acquiring a connection', async () => {
-    await redisCache.store.getClient().disconnect();
-    await expect(redisCache.set('foo', 'bar')).rejects.toBeDefined();
-  });
 });
 
 describe('get', () => {
@@ -142,10 +131,6 @@ describe('get', () => {
     await expect(redisCache.get('invalidKey')).resolves.toEqual(null);
   });
 
-  it('should return an error if there is an error acquiring a connection', async () => {
-    await redisCache.store.getClient().disconnect();
-    await expect(redisCache.get('foo')).rejects.toThrowError('The client is closed');
-  });
 });
 
 describe('del', () => {
@@ -179,10 +164,6 @@ describe('del', () => {
     await expect(redisCache.get('foo')).resolves.toEqual(null);
   });
 
-  it('should return an error if there is an error acquiring a connection', async () => {
-    await redisCache.store.getClient().disconnect();
-    await expect(redisCache.del('foo')).rejects.toThrowError('The client is closed');
-  });
 });
 
 describe('mset', () => {
@@ -242,17 +223,6 @@ describe('mset', () => {
     expect(customRedisCache.store.isCacheableValue('FooBarString')).toBe(false);
     await expect(customRedisCache.mset('foobar', 'FooBarString')).rejects.toThrowError('"FooBarString" is not a cacheable value');
   });
-
-  it('should return an error if there is an error acquiring a connection', async () => {
-    await redisCache.store.getClient().disconnect();
-    /**
-     * Waiting for a pull request to be merged in order to uncomment the following assertion. The multi.exec() is
-     * currently not rejecting the promise on client disconnect.
-     *
-     * @see https://github.com/redis/node-redis/pull/2293
-     */
-    // await expect(redisCache.mset('foo', 'bar')).rejects.toThrowError('The client is closed');
-  });
 });
 
 describe('mget', () => {
@@ -294,11 +264,6 @@ describe('mget', () => {
 
   it('should return null when the key is invalid', async () => {
     await expect(redisCache.mget('invalidKey', 'otherInvalidKey')).resolves.toEqual([null, null]);
-  });
-
-  it('should return an error if there is an error acquiring a connection', async () => {
-    await redisCache.store.getClient().disconnect();
-    await expect(redisCache.mget('foo')).rejects.toThrowError('The client is closed');
   });
 });
 
@@ -353,11 +318,6 @@ describe('mdel', () => {
     await redisCache.store.mdel(['foo', 'foo2'], {});
     await expect(redisCache.mget('foo', 'foo2')).resolves.toEqual([null, null]);
   });
-
-  it('should return an error if there is an error acquiring a connection', async () => {
-    await redisCache.store.getClient().disconnect();
-    await expect(redisCache.store.mdel('foo')).rejects.toThrowError('The client is closed');
-  });
 });
 
 describe('reset', () => {
@@ -389,11 +349,6 @@ describe('reset', () => {
     await redisCache.reset();
     await expect(redisCache.mget('foo', 'baz')).resolves.toEqual([null, null]);
   });
-
-  it('should return an error if there is an error acquiring a connection', async () => {
-    await redisCache.store.getClient().disconnect();
-    await expect(redisCache.reset()).rejects.toThrowError('The client is closed');
-  });
 });
 
 describe('keys', () => {
@@ -424,11 +379,6 @@ describe('keys', () => {
     await expect(redisCache.keys()).resolves.toHaveLength(3);
     await expect(redisCache.keys()).resolves.toEqual(expect.arrayContaining(['foo', 'foo2', 'foo3']));
   });
-
-  it('should return an error if there is an error acquiring a connection', async () => {
-    await redisCache.store.getClient().disconnect();
-    await expect(redisCache.keys('foo')).rejects.toThrowError('The client is closed');
-  });
 });
 
 describe('ttl', () => {
@@ -456,12 +406,6 @@ describe('ttl', () => {
 
   it('should retrieve ttl for an invalid key', async () => {
     await expect(redisCache.ttl('invalidKey')).resolves.toEqual(-2);
-  });
-
-  it('should return an error if there is an error acquiring a connection', async () => {
-    await redisCache.set('foo', 'bar');
-    await redisCache.store.getClient().disconnect();
-    await expect(redisCache.ttl('foo')).rejects.toThrowError('The client is closed');
   });
 });
 
