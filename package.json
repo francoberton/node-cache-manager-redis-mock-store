@@ -2,7 +2,7 @@
   "name": "cache-manager-redis-mock-store",
   "author": "Franco Berton <franco.berton93@gmail.com>",
   "description": "Redis mock store for node-cache-manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
