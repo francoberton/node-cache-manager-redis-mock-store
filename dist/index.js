@@ -433,11 +433,11 @@ function _createForOfIteratorHelper(o, allowArrayLike) {
   };
 }
 
-function redisStore(_x) {
-  return _redisStore.apply(this, arguments);
+function redisMockStore(_x) {
+  return _redisMockStore.apply(this, arguments);
 }
-function _redisStore() {
-  _redisStore = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee19(config) {
+function _redisMockStore() {
+  _redisMockStore = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee19(config) {
     var redisCache;
     return _regeneratorRuntime().wrap(function _callee19$(_context19) {
       while (1) {
@@ -452,7 +452,7 @@ function _redisStore() {
       }
     }, _callee19);
   }));
-  return _redisStore.apply(this, arguments);
+  return _redisMockStore.apply(this, arguments);
 }
 var buildRedisStoreWithConfig = function buildRedisStoreWithConfig(redisCache, config) {
   var multi = redisCache.multi();
@@ -729,7 +729,7 @@ var buildRedisStoreWithConfig = function buildRedisStoreWithConfig(redisCache, c
     };
   }();
   return {
-    name: 'redis',
+    name: 'redis-mock',
     getClient: function getClient() {
       return redisCache;
     },
@@ -1154,4 +1154,4 @@ function isObject(object) {
   return _typeof(object) === 'object' && !Array.isArray(object) && object !== null;
 }
 
-exports.redisStore = redisStore;
+exports.redisMockStore = redisMockStore;
