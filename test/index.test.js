@@ -1,5 +1,5 @@
 import cacheManager from 'cache-manager';
-import {redisStore} from '../index';
+import {redisMockStore} from '../index';
 
 let redisCache;
 let customRedisCache;
@@ -13,7 +13,7 @@ const config = {
 
 beforeEach(async () => {
   redisCache = cacheManager.caching({
-    store: await redisStore(config),
+    store: await redisMockStore(config),
   });
   await redisCache.reset();
 
@@ -30,7 +30,7 @@ beforeEach(async () => {
   };
 
   customRedisCache = cacheManager.caching({
-    store: await redisStore(customConfig),
+    store: await redisMockStore(customConfig),
   });
   await customRedisCache.reset();
 });
@@ -38,7 +38,7 @@ beforeEach(async () => {
 describe('initialization', () => {
   it('should create a store with the options that were provided', async () => {
     const redisPwdCache = cacheManager.caching({
-      store: await redisStore(config),
+      store: await redisMockStore(config),
       ...config
     });
 
@@ -441,7 +441,7 @@ describe('overridable isCacheableValue function', () => {
 
   beforeEach(async () => {
     redisCache2 = cacheManager.caching({
-      store: await redisStore({
+      store: await redisMockStore({
         ...config,
         isCacheableValue: () => {
           return 'I was overridden';

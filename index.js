@@ -1,7 +1,7 @@
 import {promisify} from 'node:util';
 import {createClient} from 'redis-mock';
 
-export async function redisStore(config) {
+export async function redisMockStore(config) {
   const redisCache = createClient(config);
 
   return buildRedisStoreWithConfig(redisCache, config);
@@ -117,7 +117,7 @@ const buildRedisStoreWithConfig = (redisCache, config) => {
   };
 
   return {
-    name: 'redis',
+    name: 'redis-mock',
     getClient: () => redisCache,
     isCacheableValue,
     set: async(key, value, options, cb) => {

@@ -33,7 +33,7 @@ See examples below on how to implement the Redis mock cache store.
 
 ```js
 var cacheManager = require('cache-manager');
-var redisStore = require('cache-manager-redis-mock-store').redisStore;
+var redisMockStore = require('cache-manager-redis-mock-store').redisMockStore;
 
 var config = {
   host: 'localhost', // default value
@@ -43,7 +43,7 @@ var config = {
 };
 
 var redisCache = cacheManager.caching({
-  store: await redisStore(config),
+  store: await redisMockStore(config),
 });
 
 // listen for redis connection error event
@@ -99,9 +99,9 @@ redisCache.wrap(key, (cb) => {
 
 ```js
 var cacheManager = require('cache-manager');
-var redisStore = require('cache-manager-redis-mock-store').redisStore;
+var redisMockStore = require('cache-manager-redis-mock-store').redisMockStore;
 
-var redisCache = cacheManager.caching({ store: await redisStore({ ...config, db: 0, ttl: 600 }) });
+var redisCache = cacheManager.caching({ store: await redisMockStore({ ...config, db: 0, ttl: 600 }) });
 var memoryCache = cacheManager.caching({ store: 'memory', max: 100, ttl: 60 });
 
 var multiCache = cacheManager.multiCaching([memoryCache, redisCache]);
